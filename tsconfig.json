@@ -2,10 +2,11 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "target": "ES6",
+    "target": "ES2020",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // "types": ["@cucumber/cucumber", "@playwright/test"]
   },
   "include": ["tests/support/**/*.ts", "tests/steps/**/*.ts"],
   "exclude": ["node_modules"]

@@ -1,38 +1,33 @@
-import { After, AfterAll, Before, BeforeAll } from "@cucumber/cucumber";
+import { After, AfterAll, Before, BeforeAll, IWorldOptions, setWorldConstructor, World } from "@cucumber/cucumber";
 import { Browser, BrowserContext, chromium, expect, Page } from '@playwright/test'
 import { playwrightContext } from "../support/contexts";
 import * as fs from "fs";
+import { ICreateAttachment, ICreateLog, ICreateLink } from "@cucumber/cucumber/lib/runtime/attachment_manager";
+import { CustomWorld } from "../support/world";
 
-BeforeAll(async () => {
+//TODO: Add APIRequestContext to BeforeAll
+Before(async function (this: CustomWorld) {
   // init
-  const browser = await chromium.launch({ headless: false });
-  let browserContext = null;
+  this.browser = await chromium.launch({ headless: false });
   if (fs.existsSync("authFile.json")) {
-    browserContext = await browser.newContext({ storageState: 'authFile.json' });
+    this.browserContext = await this.browser.newContext({ storageState: 'authFile.json' });
   } else {
-    browserContext = await browser.newContext();
+    this.browserContext = await this.browser.newContext();
   }
-  const page = browserContext ? await browserContext.newPage() : null;
+  this.page = await this.browserContext.newPage();
 
   //export auth file session
-  if (page != null && fs.existsSync("authFile.json") == false) {
-    await page.goto('https://www.rightmove.co.uk/');
-    await page.getByRole('button', { name: 'Accept all' }).click();
-    await expect(page.getByText('believe in finding itwith the UK’s largest choice of homesSearch properties for')).toBeVisible();
-    await page.context().storageState({ path: "authFile.json" });
-  }
-
-  // Store in context object
-  if (browser != null && browserContext != null && page != null) {
-    playwrightContext.setBrowser(browser);
-    playwrightContext.setBrowserContext(browserContext);
-    playwrightContext.setPage(page);
+  if (this.page != null && fs.existsSync("authFile.json") == false) {
+    await this.page.goto('https://www.rightmove.co.uk/');
+    await this.page.getByRole('button', { name: 'Accept all' }).click();
+    await expect(this.page.getByText('believe in finding it with the UK’s largest choice of homesSearch properties for')).toBeVisible();
+    await this.page.context().storageState({ path: "authFile.json" });
   }
 
 })
 
-AfterAll(async () => {
-  await playwrightContext.getPage().close()
-  await playwrightContext.getBrowserContext().close()
-  await playwrightContext.getBrowser().close()
+After(async function(this: CustomWorld) {
+  await this.page.close();
+  await this.browserContext.close();
+  await this.browser.close();
 })

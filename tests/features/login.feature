@@ -4,4 +4,5 @@ Feature: User Authentication tests
     Given I navigate to home page
 
   Scenario: 002 Search Place in London
+    Given I navigate to home page
     When I search place for sale
