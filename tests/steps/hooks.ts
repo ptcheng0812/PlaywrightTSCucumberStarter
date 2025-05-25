@@ -6,6 +6,7 @@ import { ICreateAttachment, ICreateLog, ICreateLink } from "@cucumber/cucumber/l
 import { CustomWorld } from "../support/world";
 
 //TODO: Add APIRequestContext to BeforeAll
+//TODO: clean up context and global
 Before(async function (this: CustomWorld) {
   // init
   this.browser = await chromium.launch({ headless: false });
@@ -26,7 +27,7 @@ Before(async function (this: CustomWorld) {
 
 })
 
-After(async function(this: CustomWorld) {
+After(async function (this: CustomWorld) {
   await this.page.close();
   await this.browserContext.close();
   await this.browser.close();
