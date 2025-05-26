@@ -2,7 +2,7 @@ import { DataTable, Given, When } from "@cucumber/cucumber";
 import { compareJsonAtPath, isFilePath } from "../support/utilities";
 import * as path from 'path';
 import * as fs from 'fs';
-import { jsonContext } from "../support/contexts";
+import { jsonContext, xmlContext } from "../support/contexts";
 
 Given('I set the following keys to be tolerated when compare', async function (table: DataTable) {
   const keys = table.raw().map(row => row[0]);

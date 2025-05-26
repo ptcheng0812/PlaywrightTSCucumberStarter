@@ -22,10 +22,14 @@ let responseContentType: string;
 let responseHeaders: Record<string, string>;
 let responsePath: string;
 let responseStatus: number;
-let expectedJSon: string;
+let expectedJson: string;
 let actualJson: string;
 let tolerantKeys: string[];
 let jsonDifferences: Difference[];
+let expectedXml: string;
+let actualXml: string;
+let xmlDifferences: Difference[];
+
 
 
 export const globalContext: Record<string, any> = {};
@@ -140,9 +144,9 @@ export const responseContext = {
 }
 
 export const jsonContext = {
-  getExpectedJson: () => expectedJSon,
+  getExpectedJson: () => expectedJson,
   setExpectedJson: (expJ: string) => {
-    expectedJSon = expJ;
+    expectedJson = expJ;
     setGlobalContext('ExpectedJson', expJ);
   },
   getActualJson: () => actualJson,
@@ -158,5 +162,27 @@ export const jsonContext = {
   getJsonDifferences: () => jsonDifferences,
   setJsonDifferences: (jsonD: Difference[]) => {
     jsonDifferences = jsonD;
+  }
+}
+
+export const xmlContext = {
+  getExpectedXml: () => expectedXml,
+  setExpectedXml: (expXml: string) => {
+    expectedXml = expXml;
+    setGlobalContext('ExpectedXml', expXml);
+  },
+  getActualXml: () => actualXml,
+  setActualXml: (actXml: string) => {
+    actualXml = actXml;
+    setGlobalContext('ActualXml', actXml);
+  },
+  getTolerantKeys: () => tolerantKeys,
+  setTolerantKeys: (tolKeys: string[]) => {
+    tolerantKeys = tolKeys;
+    tolKeys.forEach(key => setGlobalContext(`TolerantKeys_${key}`, key));
+  },
+  getXmlDifferences: () => xmlDifferences,
+  setXmlDifferences: (xmlD: Difference[]) => {
+    xmlDifferences = xmlD;
   }
 }

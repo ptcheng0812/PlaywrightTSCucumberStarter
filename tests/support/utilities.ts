@@ -1,4 +1,5 @@
 import { Serializable } from "child_process";
+import { XMLParser } from "fast-xml-parser";
 import { JSONPath } from "jsonpath-plus";
 
 export function flattenObject(obj: any, prefix = '', result: Record<string, any> = {}): Record<string, any> {
@@ -147,6 +148,23 @@ export type Difference =
     path: string;
     missingIn: 'obj1' | 'obj2';
   };
+
+export function compareXmlStrings(
+  xml1: string,
+  xml2: string,
+  jsonPath: string,
+  tolerantKeys: string[] = []
+) {
+  const parser = new XMLParser({
+    ignoreAttributes: false, // allow comparison of attributes
+    attributeNamePrefix: '@_' // makes attributes easier to identify
+  });
+
+  const obj1 = parser.parse(xml1);
+  const obj2 = parser.parse(xml2);
+
+  return compareJsonAtPath(obj1, obj2, jsonPath, tolerantKeys);
+}
 
 export function compareJsonAtPath(
   obj1: any,

@@ -279,16 +279,18 @@ When('I send GET request to url {string}', async function (this: CustomWorld, ur
   expect(response.status()).to.equal(200);
   this.response = response;
 
+  const respData: Promise<Serializable> = await response.json() || undefined;
+  const body: Buffer<ArrayBufferLike> = await response.body();
+  responseContext.setResponseBody(body.toString());
+
   try {
-    //TODO: XML
-    const data: Promise<Serializable> = await response.json() || undefined;
-    if (data != undefined && typeof data == 'object') {
-      responseContext.setResponseJson((await data).toString());
+    if (respData != undefined && isJsonString((await respData).toString())) {
+      responseContext.setResponseJson((await respData).toString());
     } else {
-      console.log("WARNING: No response data returned and stored in context")
+      console.log("WARNING: No response json returned and stored in context")
     }
   } catch (error) {
-    console.log("Serialization Exception: ", error);
+    console.log("JSON Serialization Exception: ", error);
   }
 })
 
@@ -316,15 +318,17 @@ When('I send POST request to url {string}', async function (this: CustomWorld, u
   expect(response.status()).to.equal(200);
   this.response = response;
 
+  const respData: Promise<Serializable> = await response.json() || undefined;
+  const body: Buffer<ArrayBufferLike> = await response.body();
+  responseContext.setResponseBody(body.toString());
+
   try {
-    //TODO: XML
-    const respData: Promise<Serializable> = await response.json() || undefined;
-    if (respData != undefined && typeof respData == 'object') {
+    if (respData != undefined && isJsonString((await respData).toString())) {
       responseContext.setResponseJson((await respData).toString());
     } else {
-      console.log("WARNING: No response data returned and stored in context")
+      console.log("WARNING: No response json returned and stored in context")
     }
   } catch (error) {
-    console.log("Serialization Exception: ", error);
+    console.log("JSON Serialization Exception: ", error);
   }
 })
