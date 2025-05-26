@@ -1,5 +1,5 @@
 import { APIRequestContext, APIResponse, Browser, BrowserContext, Page } from "@playwright/test";
-import { flattenObject, isJsonString, JSONObjectFieldTakeContextCallbackFunc } from '../helper/utilities';
+import { Difference, flattenObject, isJsonString, JSONObjectFieldTakeContextCallbackFunc } from './utilities';
 import { Serializable } from "child_process";
 
 let browser: Browser;
@@ -22,11 +22,19 @@ let responseContentType: string;
 let responseHeaders: Record<string, string>;
 let responsePath: string;
 let responseStatus: number;
+let expectedJSon: string;
+let actualJson: string;
+let tolerantKeys: string[];
+let jsonDifferences: Difference[];
 
 
 export const globalContext: Record<string, any> = {};
-export const setGlobalContext: <T>(key: string, value: T) => void = <T>(key: string, value: T) => { globalContext[key] = value; }
-export const getGlobalContext: <T>(key: string) => T = <T>(key: string): T => { return globalContext[key] as T; }
+export const setGlobalContext: <T>(key: string, value: T) => void = <T>(key: string, value: T) => { globalContext[key] = value; };
+export const getGlobalContext: <T>(key: string) => T = <T>(key: string): T => { return globalContext[key] as T; };
+
+// export function refreshAllContextVariables(this: any) {
+
+// };
 
 export const playwrightContext = {
   getBrowser: () => browser,
@@ -129,4 +137,26 @@ export const responseContext = {
     responseStatus = respStatus;
     setGlobalContext("ResponseStatus", respStatus);
   },
+}
+
+export const jsonContext = {
+  getExpectedJson: () => expectedJSon,
+  setExpectedJson: (expJ: string) => {
+    expectedJSon = expJ;
+    setGlobalContext('ExpectedJson', expJ);
+  },
+  getActualJson: () => actualJson,
+  setActualJson: (actJ: string) => {
+    actualJson = actJ;
+    setGlobalContext('ActualJson', actJ);
+  },
+  getTolerantKeys: () => tolerantKeys,
+  setTolerantKeys: (tolKeys: string[]) => {
+    tolerantKeys = tolKeys;
+    tolKeys.forEach(key => setGlobalContext(`TolerantKeys_${key}`, key));
+  },
+  getJsonDifferences: () => jsonDifferences,
+  setJsonDifferences: (jsonD: Difference[]) => {
+    jsonDifferences = jsonD;
+  }
 }

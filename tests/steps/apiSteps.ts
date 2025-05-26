@@ -6,7 +6,8 @@ import { APIResponse } from "@playwright/test";
 import { Serializable } from "child_process";
 import * as fs from 'fs';
 import * as path from 'path';
-import { isJsonString } from "../helper/utilities";
+import { inferAndCastAndAssignJson, isJsonString } from "../support/utilities";
+import { XMLBuilder } from "fast-xml-parser";
 
 /********Set Request steps*******************
   data?: string | Buffer | Serializable;
@@ -99,9 +100,10 @@ Given('I set the request data from file {string}', async function (file: string)
   }
 })
 
-Given('I set the request data as follow', async function (table: DataTable) {
+Given('I set the request data as follow to {string}', async function (table: DataTable, format: string) {
   const requestBody = table.hashes();
-  const requestBodyTransformed: Record<string, string>[] = requestBody.map((b) => {
+  //TODO: Transform logic need to be improve
+  const requestDataTransformed: Record<string, string>[] = requestBody.map((b) => {
     return Object.fromEntries(Object.entries(b).map(([key, value]) => {
       if (value === "true") return [key, true];
       if (value === "false") return [key, false];
@@ -114,8 +116,25 @@ Given('I set the request data as follow', async function (table: DataTable) {
       return [key, value];
     }));
   })
-  const requestBodyJSONString: string = requestBodyTransformed.length === 1 ? JSON.stringify(requestBodyTransformed[0]) : JSON.stringify(requestBodyTransformed)
-  requestContext.setRequestData(requestBodyJSONString);
+  let requestDataStringFormatted: string = "";
+  if (format in ["json", "JSON", "Json"]) {
+    requestDataStringFormatted = requestDataTransformed.length === 1 ? JSON.stringify(requestDataTransformed[0]) : JSON.stringify(requestDataTransformed)
+  } else if (format in ["xml", "XML", "Xml"]) {
+    const builder = new XMLBuilder({
+      format: true,
+      ignoreAttributes: false
+    });
+    requestDataStringFormatted = requestDataTransformed.length === 1 ? builder.build(requestDataTransformed[0]) : builder.build(requestDataTransformed);
+  }
+  requestContext.setRequestData(requestDataStringFormatted);
+})
+
+When('I amend the request data where key {string} to be {string}', async function (keyToAmend: string, valueToAmend: string) {
+  const originalRequestData = requestContext.getRequestData();
+  if (isJsonString(originalRequestData) && originalRequestData != null && originalRequestData != undefined) {
+    const amendedJson: string = JSON.stringify(inferAndCastAndAssignJson(originalRequestData, keyToAmend, valueToAmend));
+    requestContext.setRequestData(amendedJson);
+  }
 })
 
 /***************Set Response steps*********************
@@ -127,9 +146,6 @@ path?: string;
 response?: APIResponse;
 status?: number;
 ************************************/
-Given('I set the response body as {string}', async function (body: string) {
-  responseContext.setResponseBody(body);
-})
 
 Given('I set the response content type as {string}', async function (contentType: string) {
   responseContext.setResponseContentType(contentType);
@@ -157,9 +173,21 @@ Given('I set the response status content as {string}', async function (statusInS
   }
 })
 
-/********Variations to set Response Body steps (simple string, from file, as follow table)*******/
+/********Variations to set Response Body and JSON steps (simple string, from file, as follow table)*******/
+Given('I set the response body as string {string}', async function (body: string) {
+  responseContext.setResponseBody(body);
+})
+
 Given('I set the response json as string {string}', async function (json: string) {
   responseContext.setResponseJson(json);
+})
+
+Given('I set the response body from file {string}', async function (file: string) {
+  const filePath = path.resolve(__dirname, file);
+  if (fs.existsSync(filePath)) {
+    const fileContent: string = fs.readFileSync(filePath, 'utf-8');
+    responseContext.setResponseBody(fileContent);
+  }
 })
 
 Given('I set the response json from file {string}', async function (file: string) {
@@ -170,8 +198,9 @@ Given('I set the response json from file {string}', async function (file: string
   }
 })
 
-Given('I set the response json as follow', async function (table: DataTable) {
+Given('I set the response body as follow to {string}', async function (table: DataTable, format: string) {
   const responseBody: Record<string, string>[] = table.hashes();
+  //TODO: Transform logic need to be improve
   const responseBodyTransformed: Record<string, string>[] = responseBody.map((b) => {
     return Object.fromEntries(Object.entries(b).map(([key, value]) => {
       if (value === "true") return [key, true];
@@ -185,8 +214,46 @@ Given('I set the response json as follow', async function (table: DataTable) {
       return [key, value];
     }));
   })
-  const responseBodyJSONString: string = responseBodyTransformed.length === 1 ? JSON.stringify(responseBodyTransformed[0]) : JSON.stringify(responseBodyTransformed)
-  responseContext.setResponseJson(responseBodyJSONString);
+  let responseBodyStringFormatted: string = "";
+  if (format in ["json", "JSON", "Json"]) {
+    responseBodyStringFormatted = responseBodyTransformed.length === 1 ? JSON.stringify(responseBodyTransformed[0]) : JSON.stringify(responseBodyTransformed);
+  } else if (format in ["xml", "XML", "Xml"]) {
+    const builder = new XMLBuilder({
+      format: true,
+      ignoreAttributes: false
+    });
+    responseBodyStringFormatted = responseBodyTransformed.length === 1 ? builder.build(responseBodyTransformed[0]) : builder.build(responseBodyTransformed);
+  }
+  responseContext.setResponseBody(responseBodyStringFormatted);
+})
+
+Given('I set the response json as follow', async function (table: DataTable) {
+  const responseJson: Record<string, string>[] = table.hashes();
+  //TODO: Transform logic need to be improve
+  const responseJsonTransformed: Record<string, string>[] = responseJson.map((b) => {
+    return Object.fromEntries(Object.entries(b).map(([key, value]) => {
+      if (value === "true") return [key, true];
+      if (value === "false") return [key, false];
+
+      const parsed = parseInt(value, 10);
+      if (!isNaN(parsed) && parsed.toString() === value.trim()) {
+        return [key, parsed];
+      }
+
+      return [key, value];
+    }));
+  })
+  const responseJSONString: string = responseJsonTransformed.length === 1 ? JSON.stringify(responseJsonTransformed[0]) : JSON.stringify(responseJsonTransformed)
+  responseContext.setResponseJson(responseJSONString);
+})
+
+When('I amend the response json where key {string} to be {string}', async function (keyToAmend: string, valueToAmend: string) {
+  const originalResponseJson = responseContext.getResponseJson();
+
+  if (isJsonString(originalResponseJson) && originalResponseJson != null && originalResponseJson != undefined) {
+    const amendedRespJson: string = JSON.stringify(inferAndCastAndAssignJson(originalResponseJson, keyToAmend, valueToAmend));
+    responseContext.setResponseJson(amendedRespJson);
+  }
 })
 
 /***************API Actions GET, POST, PUT, DELETE */
@@ -213,6 +280,7 @@ When('I send GET request to url {string}', async function (this: CustomWorld, ur
   this.response = response;
 
   try {
+    //TODO: XML
     const data: Promise<Serializable> = await response.json() || undefined;
     if (data != undefined && typeof data == 'object') {
       responseContext.setResponseJson((await data).toString());
@@ -249,6 +317,7 @@ When('I send POST request to url {string}', async function (this: CustomWorld, u
   this.response = response;
 
   try {
+    //TODO: XML
     const respData: Promise<Serializable> = await response.json() || undefined;
     if (respData != undefined && typeof respData == 'object') {
       responseContext.setResponseJson((await respData).toString());

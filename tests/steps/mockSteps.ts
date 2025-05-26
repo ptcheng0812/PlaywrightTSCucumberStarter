@@ -26,13 +26,13 @@ When('I route to mock api {string} ', async function (this: CustomWorld, url: st
       maxRetries: requestMaxRetries,
       timeout: requestTimeout,
       postData: requestData,
-      method: requestMethod
+      method: requestMethod,
     });
     const jsonOriginal = await response.json();
     if (responseJson == undefined || responseBody == undefined) { console.log('WARNING: Response Body or JSON is empty!'); }
     await route.fulfill({
-      response: response,
-      json: responseJson == undefined ? jsonOriginal : responseJson,
+      response: this.response ?? response,
+      json: responseJson ?? jsonOriginal,
       body: responseBody,
       contentType: responseContentType,
       headers: responseHeaders,
