@@ -1,5 +1,5 @@
 import { After, AfterAll, Before, BeforeAll, IWorldOptions, setWorldConstructor, World } from "@cucumber/cucumber";
-import { Browser, BrowserContext, chromium, expect, Page } from '@playwright/test'
+import { Browser, BrowserContext, chromium, expect, Page, request as playwrightRequest } from '@playwright/test'
 import { playwrightContext } from "../support/contexts";
 import * as fs from "fs";
 import { ICreateAttachment, ICreateLog, ICreateLink } from "@cucumber/cucumber/lib/runtime/attachment_manager";
@@ -9,6 +9,7 @@ import { CustomWorld } from "../support/world";
 //TODO: clean up context and global
 Before(async function (this: CustomWorld) {
   // init
+  this.request = await playwrightRequest.newContext();
   this.browser = await chromium.launch({ headless: false });
   if (fs.existsSync("authFile.json")) {
     this.browserContext = await this.browser.newContext({ storageState: 'authFile.json' });

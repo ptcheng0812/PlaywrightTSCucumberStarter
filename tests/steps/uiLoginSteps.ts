@@ -4,11 +4,11 @@ import { playwrightContext } from '../support/contexts';
 import { CustomWorld } from '../support/world';
 
 
-Given('I navigate to home page', async function (this: CustomWorld) {
+Given('I navigate to home page', { timeout: 60000 }, async function (this: CustomWorld) {
   await this.page.goto("https://www.rightmove.co.uk/");
 })
 
-When('I search place for sale', async function (this: CustomWorld) {
+When('I search place for sale', { timeout: 60000 }, async function (this: CustomWorld) {
   await this.page.getByTestId("typeahead-searchbox").click();
   await this.page.getByTestId("typeahead-searchbox").fill("London");
   await this.page.getByRole('button', { name: 'London', exact: true }).click();

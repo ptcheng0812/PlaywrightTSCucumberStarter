@@ -1,6 +1,7 @@
 import { APIRequestContext, APIResponse, Browser, BrowserContext, Page } from "@playwright/test";
-import { Difference, flattenObject, isJsonString, JSONObjectFieldTakeContextCallbackFunc } from './utilities';
+import { Difference, flattenObject, isJsonString, isXmlString, ObjectFieldTakeContextCallbackFunc, xmlParser } from './utilities';
 import { Serializable } from "child_process";
+import { XMLParser } from "fast-xml-parser";
 
 let browser: Browser;
 let browserContext: BrowserContext;
@@ -16,7 +17,7 @@ let requestIgnoreHTTPSErrors: boolean;
 let requestMaxRedirects: number;
 let requestMaxRetries: number;
 let requestTimeout: number;
-let responseJson: string;
+let responseData: string;
 let responseBody: string | Buffer;
 let responseContentType: string;
 let responseHeaders: Record<string, string>;
@@ -78,7 +79,13 @@ export const requestContext = {
   getRequestData: () => requestData,
   setRequestData: (reqB: string) => {
     requestData = reqB;
-    isJsonString(reqB.toString()) ? JSONObjectFieldTakeContextCallbackFunc(JSON.parse(reqB), 'RequestData_', setGlobalContext) : setGlobalContext('RequestData', reqB.toString());
+    if (isJsonString(reqB.toString())) {
+      ObjectFieldTakeContextCallbackFunc(JSON.parse(reqB), 'RequestData', setGlobalContext);
+      setGlobalContext('RequestData', reqB.toString());
+    } else if (isXmlString(reqB.toString())) {
+      ObjectFieldTakeContextCallbackFunc(xmlParser(reqB), 'RequestData', setGlobalContext);
+      setGlobalContext('RequestData', reqB.toString());
+    }
   },
   getRequestFailOnStatusCode: () => requestFailOnStatusCode,
   setRequestFailOnStatusCode: (reqFailOnStatusCode: boolean) => {
@@ -108,13 +115,16 @@ export const requestContext = {
 }
 
 export const responseContext = {
-  getResponseJson: () => responseJson,
-  setResponseJson: (respJson: string) => {
-    responseJson = respJson;
-    // for(const [key, value] of Object.entries(flattenObject(respJson))) {
-    //   setGlobalContext(`ResponseJson_${key}`, value);
-    // }
-    isJsonString(respJson.toString()) ? JSONObjectFieldTakeContextCallbackFunc(JSON.parse(respJson), 'ResponseJson_', setGlobalContext) : setGlobalContext('ResponseJson', respJson.toString());
+  getResponseData: () => responseData,
+  setResponseData: (respJson: string) => {
+    responseData = respJson;
+    if (isJsonString(respJson.toString())) {
+      ObjectFieldTakeContextCallbackFunc(JSON.parse(respJson), 'ResponseData', setGlobalContext);
+      setGlobalContext('ResponseData', respJson.toString());
+    } else if (isXmlString(respJson.toString())) {
+      ObjectFieldTakeContextCallbackFunc(xmlParser(respJson), 'ResponseData', setGlobalContext);
+      setGlobalContext('ResponseData', respJson.toString());
+    }
   },
   getResponseBody: () => responseBody,
   setResponseBody: (respBody: string | Buffer) => {
@@ -147,12 +157,22 @@ export const jsonContext = {
   getExpectedJson: () => expectedJson,
   setExpectedJson: (expJ: string) => {
     expectedJson = expJ;
-    setGlobalContext('ExpectedJson', expJ);
+    if (isJsonString(expJ)) {
+      ObjectFieldTakeContextCallbackFunc(JSON.parse(expJ), 'ExpectedJson', setGlobalContext);
+      setGlobalContext('ExpectedJson', expJ);
+    } else {
+      setGlobalContext('ExpectedJson', expJ);
+    }
   },
   getActualJson: () => actualJson,
   setActualJson: (actJ: string) => {
     actualJson = actJ;
-    setGlobalContext('ActualJson', actJ);
+    if (isJsonString(actJ)) {
+      ObjectFieldTakeContextCallbackFunc(JSON.parse(actJ), 'ActualJson', setGlobalContext);
+      setGlobalContext('ActualJson', actJ);
+    } else {
+      setGlobalContext('ActualJson', actJ);
+    }
   },
   getTolerantKeys: () => tolerantKeys,
   setTolerantKeys: (tolKeys: string[]) => {
@@ -169,11 +189,29 @@ export const xmlContext = {
   getExpectedXml: () => expectedXml,
   setExpectedXml: (expXml: string) => {
     expectedXml = expXml;
+    const parser = new XMLParser({
+      ignoreAttributes: false, // allow comparison of attributes
+      attributeNamePrefix: '@_' // makes attributes easier to identify
+    });
+    try {
+      ObjectFieldTakeContextCallbackFunc(parser.parse(expXml), 'ExpectedXml', setGlobalContext)
+    } catch {
+      console.error(`Error: Fail to set global contexts for xml fields`)
+    }
     setGlobalContext('ExpectedXml', expXml);
   },
   getActualXml: () => actualXml,
   setActualXml: (actXml: string) => {
     actualXml = actXml;
+    const parser = new XMLParser({
+      ignoreAttributes: false, // allow comparison of attributes
+      attributeNamePrefix: '@_' // makes attributes easier to identify
+    });
+    try {
+      ObjectFieldTakeContextCallbackFunc(parser.parse(actXml), 'ActualXml', setGlobalContext)
+    } catch {
+      console.error(`Error: Fail to set global contexts for xml fields`)
+    }
     setGlobalContext('ActualXml', actXml);
   },
   getTolerantKeys: () => tolerantKeys,

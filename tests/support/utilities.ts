@@ -1,5 +1,5 @@
 import { Serializable } from "child_process";
-import { XMLParser } from "fast-xml-parser";
+import { XMLBuilder, XMLParser, XMLValidator } from "fast-xml-parser";
 import { JSONPath } from "jsonpath-plus";
 
 export function flattenObject(obj: any, prefix = '', result: Record<string, any> = {}): Record<string, any> {
@@ -25,7 +25,7 @@ export function flattenObject(obj: any, prefix = '', result: Record<string, any>
   return result;
 }
 
-export function JSONObjectFieldTakeContextCallbackFunc(
+export function ObjectFieldTakeContextCallbackFunc(
   obj: Serializable, prefix = '',
   func: <T>(key: string, value: T) => void
 ): void {
@@ -33,7 +33,7 @@ export function JSONObjectFieldTakeContextCallbackFunc(
     obj.forEach((item, index) => {
       const key = `${prefix}[${index}]`;
       if (item !== null && typeof item === 'object') {
-        JSONObjectFieldTakeContextCallbackFunc(item, key, func);
+        ObjectFieldTakeContextCallbackFunc(item, key, func);
       } else {
         func(key, item);
       }
@@ -42,14 +42,13 @@ export function JSONObjectFieldTakeContextCallbackFunc(
     for (const key in obj) {
       if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
       const newKey = prefix ? `${prefix}.${key}` : key;
-      JSONObjectFieldTakeContextCallbackFunc((obj as any)[key], newKey, func);
+      ObjectFieldTakeContextCallbackFunc((obj as any)[key], newKey, func);
     }
   } else {
     func(prefix, obj);
   }
 
 }
-
 
 export function isJsonString(str: string): boolean {
   try {
@@ -63,11 +62,24 @@ export function isJsonString(str: string): boolean {
   }
 }
 
+export function isXmlString(str: string): boolean {
+  const result = XMLValidator.validate(str);
+  return result === true;
+}
+
 export function isFilePath(path: string) {
   // Check if the path ends with a file-like pattern: e.g. .txt, .js, .json
   return /\.[a-zA-Z0-9]+$/.test(path);
 }
 
+export function xmlParser(xmlStr: string): any {
+  const parser = new XMLParser({
+    ignoreAttributes: false, // allow comparison of attributes
+    attributeNamePrefix: '@_' // makes attributes easier to identify
+  });
+
+  return parser.parse(xmlStr);
+}
 
 /**
  * Infers the type of a value (or values) at a given JSONPath and casts input string(s) to that type.
@@ -100,6 +112,42 @@ export function inferAndCastAndAssignJson(json: any, path: string, input: string
   return json;
 }
 
+export function inferAndCastAndAssignXml(
+  xmlString: string,
+  path: string,
+  input: string | string[]
+): string {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    parseAttributeValue: false,
+    parseTagValue: false,
+  });
+  const builder = new XMLBuilder({ ignoreAttributes: false });
+
+  const jsonObj = parser.parse(xmlString);
+
+  const results = JSONPath({ path, json: jsonObj, resultType: 'all' });
+
+  if (!Array.isArray(results) || results.length === 0) {
+    throw new Error(`No value found at path: ${path}`);
+  }
+
+  const inputs = Array.isArray(input) ? input : Array(results.length).fill(input);
+
+  if (inputs.length !== results.length) {
+    throw new Error(`Mismatch between result count (${results.length}) and inputs (${inputs.length})`);
+  }
+
+  results.forEach((res, index) => {
+    const oldValue = res.value;
+    const newValue = castToType(inputs[index], typeof oldValue);
+    res.parent[res.parentProperty] = newValue;
+  });
+
+  return builder.build(jsonObj);
+}
+
 export function castToType(input: string, type: string): any {
   switch (type) {
     case 'number':
@@ -116,6 +164,14 @@ export function castToType(input: string, type: string): any {
       } catch {
         throw new Error(`Cannot cast "${input}" to object`);
       }
+    case 'array':
+      try {
+        return JSON.parse(input);
+      } catch {
+        throw new Error(`Cannot cast "${input}" to object`);
+      }
+    case 'null':
+      return null;
     case 'string':
     default:
       return input;
@@ -155,13 +211,8 @@ export function compareXmlStrings(
   jsonPath: string,
   tolerantKeys: string[] = []
 ) {
-  const parser = new XMLParser({
-    ignoreAttributes: false, // allow comparison of attributes
-    attributeNamePrefix: '@_' // makes attributes easier to identify
-  });
-
-  const obj1 = parser.parse(xml1);
-  const obj2 = parser.parse(xml2);
+  const obj1 = isXmlString(xml1) ? xmlParser(xml1) : "";
+  const obj2 = isXmlString(xml2) ? xmlParser(xml2) : "";
 
   return compareJsonAtPath(obj1, obj2, jsonPath, tolerantKeys);
 }

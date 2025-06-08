@@ -1,0 +1,29 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Cucumber Tests (CommonJS)",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "cucumber-js",
+        "tests/features/**/*.feature", // Path to your feature files
+        "--tags",
+        "@POST_API_REQUEST_XML",
+        "--require-module",
+        "ts-node/register", // Enables TS in runtime
+        "--require",
+        "tests/steps/**/*.ts" // Step definitions
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}
