@@ -1,6 +1,7 @@
 import { Serializable } from "child_process";
 import { XMLBuilder, XMLParser, XMLValidator } from "fast-xml-parser";
 import { JSONPath } from "jsonpath-plus";
+import { CustomWorld } from './world';
 
 export function flattenObject(obj: any, prefix = '', result: Record<string, any> = {}): Record<string, any> {
   if (Array.isArray(obj)) {
@@ -25,29 +26,55 @@ export function flattenObject(obj: any, prefix = '', result: Record<string, any>
   return result;
 }
 
+export function stripLineBreaks(value: any): any {
+  if (typeof value === 'string') {
+    return value.replace(/[\r\n]+/g, '');
+  } else if (Array.isArray(value)) {
+    return value.map(stripLineBreaks);
+  } else if (value && typeof value === 'object') {
+    const result: any = {};
+    for (const key in value) {
+      result[key] = stripLineBreaks(value[key]);
+    }
+    return result;
+  }
+  return value;
+}
+
 export function ObjectFieldTakeContextCallbackFunc(
-  obj: Serializable, prefix = '',
-  func: <T>(key: string, value: T) => void
+  world: CustomWorld, obj: Serializable, prefix = '',
+  func: <T>(world: CustomWorld, key: string, value: T) => void
 ): void {
   if (Array.isArray(obj)) {
     obj.forEach((item, index) => {
       const key = `${prefix}[${index}]`;
       if (item !== null && typeof item === 'object') {
-        ObjectFieldTakeContextCallbackFunc(item, key, func);
+        ObjectFieldTakeContextCallbackFunc(world, item, key, func);
       } else {
-        func(key, item);
+        func(world, key, item);
       }
     });
   } else if (obj !== null && typeof obj === 'object') {
     for (const key in obj) {
       if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
       const newKey = prefix ? `${prefix}.${key}` : key;
-      ObjectFieldTakeContextCallbackFunc((obj as any)[key], newKey, func);
+      ObjectFieldTakeContextCallbackFunc(world, (obj as any)[key], newKey, func);
     }
   } else {
-    func(prefix, obj);
+    func(world, prefix, obj);
   }
 
+}
+
+export function parseIfJsonString(value: any): any {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
 }
 
 export function isJsonString(str: string): boolean {
@@ -84,6 +111,7 @@ export function xmlParser(xmlStr: string): any {
 /**
  * Infers the type of a value (or values) at a given JSONPath and casts input string(s) to that type.
  * Updates the original JSON object with the casted value(s).
+ * for amending json / xml
  *
  * @param json - The target JSON object
  * @param path - JSONPath string (supports wildcards)
@@ -214,36 +242,39 @@ export function compareXmlStrings(
   const obj1 = isXmlString(xml1) ? xmlParser(xml1) : "";
   const obj2 = isXmlString(xml2) ? xmlParser(xml2) : "";
 
-  return compareJsonAtPath(obj1, obj2, jsonPath, tolerantKeys);
+  const extracted1 = JSONPath({ path: jsonPath, json: obj1 });
+  const extracted2 = JSONPath({ path: jsonPath, json: obj2 });
+
+  if (!extracted1?.length || !extracted2?.length) {
+    throw new Error(`No match found in object 1 or object2 for JSONPath: ${jsonPath}`);
+  }
+
+  return compareObj(extracted1[0], extracted2[0], tolerantKeys, jsonPath, []);
 }
 
 export function compareJsonAtPath(
-  obj1: any,
-  obj2: any,
+  json1: string,
+  json2: string,
   jsonPath: string,
   tolerantKeys: string[] = []
 ): Difference[] {
+  const obj1 = JSON.parse(stripLineBreaks(json1));
+  const obj2 = JSON.parse(stripLineBreaks(json2));
+
   const nodes1 = JSONPath({ path: jsonPath, json: obj1 }) ?? [];
   const nodes2 = JSONPath({ path: jsonPath, json: obj2 }) ?? [];
 
   if (nodes1.length === 0 || nodes2.length === 0) {
-    return [
-      {
-        type: 'missing_key',
-        path: jsonPath,
-        key: jsonPath,
-        missingIn: nodes1.length === 0 ? 'obj1' : 'obj2',
-      },
-    ];
+    throw new Error(`No match found in object 1 or object 2 for JSONPath: ${jsonPath}`);
   }
 
   const val1 = nodes1[0];
   const val2 = nodes2[0];
 
-  return compareJson(val1, val2, tolerantKeys, jsonPath, []);
+  return compareObj(val1, val2, tolerantKeys, jsonPath, []);
 }
 
-function compareJson(
+function compareObj(
   obj1: any,
   obj2: any,
   tolerantKeys: string[] = [],
@@ -276,7 +307,7 @@ function compareJson(
       } else if (i >= obj2.length) {
         differences.push({ type: 'missing_array_index', path: newPath, missingIn: 'obj2' });
       } else {
-        compareJson(obj1[i], obj2[i], tolerantKeys, newPath, differences);
+        compareObj(obj1[i], obj2[i], tolerantKeys, newPath, differences);
       }
     }
   } else if (
@@ -301,7 +332,7 @@ function compareJson(
       } else if (!(key in obj2)) {
         differences.push({ type: 'missing_key', key, path: newPath, missingIn: 'obj2' });
       } else {
-        compareJson(val1, val2, tolerantKeys, newPath, differences);
+        compareObj(val1, val2, tolerantKeys, newPath, differences);
       }
     }
   } else if (obj1 !== obj2) {
@@ -311,6 +342,32 @@ function compareJson(
       val1: obj1,
       val2: obj2,
     });
+  }
+
+  return differences;
+}
+
+
+export function compareRecordArrays(
+  arr1: Record<string, any>[],
+  arr2: Record<string, any>[],
+  tolerantKeys: string[] = []
+): Difference[] {
+  const differences: Difference[] = [];
+
+  const maxLength = Math.max(arr1.length, arr2.length);
+  for (let i = 0; i < maxLength; i++) {
+    const item1 = arr1[i];
+    const item2 = arr2[i];
+    const path = `$[${i}]`;
+
+    if (item1 === undefined) {
+      differences.push({ type: 'missing_array_index', path, missingIn: 'obj1' });
+    } else if (item2 === undefined) {
+      differences.push({ type: 'missing_array_index', path, missingIn: 'obj2' });
+    } else {
+      compareObj(item1, item2, tolerantKeys, path, differences);
+    }
   }
 
   return differences;

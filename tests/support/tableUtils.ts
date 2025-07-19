@@ -1,11 +1,12 @@
-import { expandVariablesDeepAsString } from "./variables";
+import { expandVariables } from "./variableUtils";
+import { CustomWorld } from './world';
 
-export function hashTableTransformed(inputTable: Record<string, string>[]): Record<string, any>[] {
+export function hashTableTransformed(world: CustomWorld, inputTable: Record<string, string>[]): Record<string, any>[] {
   //TODO: Sub-Level Transform?
 
   return inputTable.map((b) => {
     return Object.fromEntries(Object.entries(b).map(([key, value]) => {
-      value = expandVariablesDeepAsString(value.trim());
+      value = expandVariables(world, value.trim());
 
       if (value === "true" || value === "True" || value === "TRUE") return [key, true];
       if (value === "false" || value === "False" || value === "FALSE") return [key, false];
@@ -31,9 +32,9 @@ export function hashTableTransformed(inputTable: Record<string, string>[]): Reco
 }
 
 
-export function rowTableTransformed(inputTable: Record<string, string>): Record<string, any> {
+export function rowTableTransformed(world: CustomWorld, inputTable: Record<string, string>): Record<string, any> {
   return Object.fromEntries(Object.entries(inputTable).map(([key, value]) => {
-    value = expandVariablesDeepAsString(value.trim());
+    value = expandVariables(world, value.trim());
 
     if (value === "true" || value === "True" || value === "TRUE") return [key, true];
     if (value === "false" || value === "False" || value === "FALSE") return [key, false];

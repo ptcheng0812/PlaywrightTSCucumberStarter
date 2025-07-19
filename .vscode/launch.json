@@ -13,11 +13,13 @@
         "cucumber-js",
         "tests/features/**/*.feature", // Path to your feature files
         "--tags",
-        "@POST_API_REQUEST_XML",
+        "@POST_API_REQUEST_XML_COMPARE", // tags
         "--require-module",
         "ts-node/register", // Enables TS in runtime
         "--require",
-        "tests/steps/**/*.ts" // Step definitions
+        "tests/steps/**/*.ts", // Step definitions
+        "--require",
+        "tests/support/**/*.ts"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
