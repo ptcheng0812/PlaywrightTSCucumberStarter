@@ -8,7 +8,7 @@ export type SQLStatement = {
   values: any[] | Record<string, any>;
 };
 
-interface IDatabaseRepository {
+export interface IDatabaseRepository {
   query(sql: string): Promise<Record<string, any>[]>;
   create(tableName: string, row: Record<string, any>): Promise<void>;
   update(tableName: string, data: Record<string, any>, where: Record<string, any>): Promise<void>;

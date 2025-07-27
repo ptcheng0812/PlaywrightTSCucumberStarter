@@ -1,10 +1,10 @@
 import { APIRequestContext, APIResponse, Browser, BrowserContext, Page } from "@playwright/test";
 import { Serializable } from "child_process";
 import { XMLParser } from "fast-xml-parser";
-import { DatabaseConnection } from "./database";
 import { WireMockRestClient } from "wiremock-rest-client";
 import { Difference, isJsonString, isXmlString, ObjectFieldTakeContextCallbackFunc, xmlParser } from "./commonUtils";
 import { CustomWorld } from './world';
+import { IDatabaseRepository } from "./databaseRepo";
 
 let browser: Browser;
 let browserContext: BrowserContext;
@@ -243,9 +243,9 @@ export const databaseContext = {
   setConnectionString: (world: CustomWorld, connectionString: string) => {
     setGlobalContext(world, "ConnectionString", connectionString)
   },
-  getDatabaseConn: (world: CustomWorld): DatabaseConnection => getGlobalContext(world, "DatabaseConnection"),
-  setDatabaseConn: (world: CustomWorld, conn: DatabaseConnection) => {
-    setGlobalContext(world, "DatabaseConnection", conn);
+  getDatabaseRepo: (world: CustomWorld): IDatabaseRepository => getGlobalContext(world, "DatabaseRepository"),
+  setDatabaseRepo: (world: CustomWorld, repo: IDatabaseRepository) => {
+    setGlobalContext(world, "DatabaseRepository", repo);
   },
   getSqlQuery: (world: CustomWorld) => getGlobalContext(world, "SqlQuery"),
   setSqlQuery: (world: CustomWorld, query: string) => setGlobalContext(world, "SqlQuery", query),
