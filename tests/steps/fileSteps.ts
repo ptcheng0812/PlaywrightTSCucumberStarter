@@ -5,6 +5,7 @@ import { FileRepository } from "../support/fileRepo";
 import * as path from 'path';
 import * as fs from 'fs';
 import assert from 'assert';
+import { jsonContext } from "../support/contexts";
 
 When('I export data {string} to file path {string}', async function (this: CustomWorld, data: string, filePath: string) {
   filePath = path.resolve(__dirname, expandVariables(this, filePath));
@@ -28,9 +29,10 @@ When('I export data {string} to file path {string}', async function (this: Custo
 Then('I compare expected xlsx from file path {string} to actual xlsx from path {string}', async function (this: CustomWorld, filePath1: string, filePath2: string) {
   filePath1 = path.resolve(__dirname, expandVariables(this, filePath1));
   filePath2 = path.resolve(__dirname, expandVariables(this, filePath2));
+  let tolerantKeys: string[] = jsonContext.getTolerantKeys(this,) ?? [];
   const file1 = fs.readFileSync(filePath1);
   const file2 = fs.readFileSync(filePath2);
-  const diff = await FileRepository.compare(file1, file2, 'xlsx');
+  const diff = await FileRepository.compare(file1, file2, tolerantKeys, 'xlsx');
   // console.log('Only in A:', diff.onlyInA);
   // console.log('Only in B:', diff.onlyInB);
   if (diff.length === 0) {
@@ -51,9 +53,10 @@ Then('I compare expected xlsx from file path {string} to actual xlsx from path {
 Then('I compare expected csv from file path {string} to actual csv from path {string}', async function (this: CustomWorld, filePath1: string, filePath2: string) {
   filePath1 = path.resolve(__dirname, expandVariables(this, filePath1));
   filePath2 = path.resolve(__dirname, expandVariables(this, filePath2));
+  let tolerantKeys: string[] = jsonContext.getTolerantKeys(this,) ?? [];
   const file1 = fs.readFileSync(filePath1);
   const file2 = fs.readFileSync(filePath2);
-  const diff = await FileRepository.compare(file1, file2, 'csv');
+  const diff = await FileRepository.compare(file1, file2, tolerantKeys, 'csv');
   // console.log('Only in A:', diff.onlyInA);
   // console.log('Only in B:', diff.onlyInB);
   if (diff.length === 0) {

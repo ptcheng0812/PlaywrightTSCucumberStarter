@@ -191,7 +191,8 @@ export class FileComparer {
 
   static diff(
     a: Record<string, any>[],
-    b: Record<string, any>[]
+    b: Record<string, any>[],
+    tolerantKeys: string[]
   ): Difference[] {
     // const key = (row: Record<string, any>) => JSON.stringify(row);
     // const setA = new Set(a.map(key));
@@ -201,7 +202,7 @@ export class FileComparer {
     // const onlyInB = b.filter(row => !setA.has(key(row)));
 
     // return { onlyInA, onlyInB };
-    return compareObj(a, b);
+    return compareObj(a, b, tolerantKeys);
   }
 }
 
@@ -223,6 +224,7 @@ export class FileRepository {
   static async compare(
     fileA: Buffer | string,
     fileB: Buffer | string,
+    tolerantKeys: string[],
     format: 'xlsx' | 'csv'
   ) {
     let dataA: Record<string, any>[] = [];
@@ -236,6 +238,6 @@ export class FileRepository {
       dataB = FileComparer.parseCsv(fileB as string);
     }
 
-    return FileComparer.diff(dataA, dataB);
+    return FileComparer.diff(dataA, dataB, tolerantKeys);
   }
 }

@@ -1,3 +1,4 @@
+@FILE_TEST
 Feature: File Export tests
 
   @EXPORT_TO_XLSX
