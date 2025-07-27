@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
 import { Parser } from 'json2csv';
 import { parse as parseCsv } from 'csv-parse/sync';
-import { xmlParser } from "./commonUtils";
+import { xmlParser, flattenObject, Difference, compareObj } from './commonUtils';
+import { XMLBuilder } from 'fast-xml-parser';
 
 export interface IDataAdapter {
   toObjectAsync(): Promise<Record<string, any>[]>;
@@ -106,26 +107,58 @@ export class XlsxExporter implements IFileExporter {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Sheet1');
 
-    if (data.length) {
-      ws.columns = Object.keys(data[0]).map(k => ({ header: k, key: k }));
-      data.forEach(row => ws.addRow(row));
-    }
+    const flatData = data.map(d => flattenObject(d));
+    const allKeys = new Set<string>();
+    flatData.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
 
+    const headers = Array.from(allKeys);
+    ws.columns = headers.map(h => ({ header: h, key: h }));
+
+    flatData.forEach(row => ws.addRow(row));
     return await wb.xlsx.writeBuffer();
   }
 }
 
 export class CsvExporter implements IFileExporter {
   async export(data: Record<string, any>[]): Promise<string> {
-    const parser = new Parser();
-    return parser.parse(data);
+    const flatData = data.map(d => flattenObject(d));
+
+    // Collect all unique headers
+    const allKeys = new Set<string>();
+    flatData.forEach(row => Object.keys(row).forEach(key => allKeys.add(key)));
+    const fields = Array.from(allKeys);
+
+    const parser = new Parser({ fields });
+    return parser.parse(flatData);
+  }
+}
+
+export class JsonExporter implements IFileExporter {
+  async export(data: Record<string, any>[]): Promise<string> {
+    return JSON.stringify(data, null, 2);
+  }
+}
+
+export class XmlExporter implements IFileExporter {
+  async export(data: Record<string, any>[]): Promise<string> {
+    const builder = new XMLBuilder({
+      ignoreAttributes: false,
+      format: true,
+      suppressEmptyNode: true
+    });
+
+    // Wrap in root node, and use "item" for each entry
+    const xml = builder.build({ items: { item: data } });
+    return xml;
   }
 }
 
 export class ExporterFactory {
-  static create(format: 'xlsx' | 'csv') {
+  static create(format: 'xlsx' | 'csv' | 'json' | 'xml') {
     if (format === 'xlsx') return new XlsxExporter();
     if (format === 'csv') return new CsvExporter();
+    if (format === 'json') return new JsonExporter();
+    if (format === 'xml') return new XmlExporter();
     throw new Error(`Unsupported format: ${format}`);
   }
 }
@@ -159,15 +192,16 @@ export class FileComparer {
   static diff(
     a: Record<string, any>[],
     b: Record<string, any>[]
-  ): { onlyInA: Record<string, any>[]; onlyInB: Record<string, any>[] } {
-    const key = (row: Record<string, any>) => JSON.stringify(row);
-    const setA = new Set(a.map(key));
-    const setB = new Set(b.map(key));
+  ): Difference[] {
+    // const key = (row: Record<string, any>) => JSON.stringify(row);
+    // const setA = new Set(a.map(key));
+    // const setB = new Set(b.map(key));
 
-    const onlyInA = a.filter(row => !setB.has(key(row)));
-    const onlyInB = b.filter(row => !setA.has(key(row)));
+    // const onlyInA = a.filter(row => !setB.has(key(row)));
+    // const onlyInB = b.filter(row => !setA.has(key(row)));
 
-    return { onlyInA, onlyInB };
+    // return { onlyInA, onlyInB };
+    return compareObj(a, b);
   }
 }
 
@@ -181,7 +215,7 @@ export class FileRepository {
     this.records = await adapter.toObjectAsync();
   }
 
-  async exportTo(format: 'xlsx' | 'csv'): Promise<Buffer | string> {
+  async exportTo(format: 'xlsx' | 'csv' | 'json' | 'xml'): Promise<Buffer | string> {
     const exporter = ExporterFactory.create(format);
     return await exporter.export(this.records);
   }

@@ -48,6 +48,7 @@ export function ObjectFieldTakeContextCallbackFunc(
   if (Array.isArray(obj)) {
     obj.forEach((item, index) => {
       const key = `${prefix}[${index}]`;
+      func(world, key, item);
       if (item !== null && typeof item === 'object') {
         ObjectFieldTakeContextCallbackFunc(world, item, key, func);
       } else {
@@ -58,6 +59,7 @@ export function ObjectFieldTakeContextCallbackFunc(
     for (const key in obj) {
       if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
       const newKey = prefix ? `${prefix}.${key}` : key;
+      func(world, newKey, (obj as any)[key]);
       ObjectFieldTakeContextCallbackFunc(world, (obj as any)[key], newKey, func);
     }
   } else {
@@ -274,7 +276,7 @@ export function compareJsonAtPath(
   return compareObj(val1, val2, tolerantKeys, jsonPath, []);
 }
 
-function compareObj(
+export function compareObj(
   obj1: any,
   obj2: any,
   tolerantKeys: string[] = [],

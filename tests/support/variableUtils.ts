@@ -17,7 +17,7 @@ export function expandVariables(world: CustomWorld, input: string, type: string 
     previous = input;
     input = input.replace(variableRegex, (_, key) => {
       const value = getGlobalContext(world, key);
-      return value !== undefined ? String(value) : `{${key}}`;
+      return value !== undefined ? JSON.stringify(value) : `{${key}}`;
     });
   } while (input.includes('{') && input !== previous); // stop if nothing changed
 
