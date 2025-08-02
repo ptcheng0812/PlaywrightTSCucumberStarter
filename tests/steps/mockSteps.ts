@@ -34,10 +34,12 @@ When('I route to mock api {string} using playwright', async function (this: Cust
     // let jsonOriginal;
     // try {
     //   jsonOriginal = await response.json();
+    //   jsonOriginal["Europe"][0]["name"] = "UK"
+    //   jsonOriginal["Europe"][0]["link"] = "overseas-property/in-UK.html"
     // } catch (error) {
 
     // }
-    if (responseData == undefined || responseBody == undefined) { console.log('WARNING: Response Body or JSON is empty!'); }
+    // if (responseData == undefined || responseBody == undefined) { console.log('WARNING: Response Body or JSON is empty!'); }
     await route.fulfill({
       response: this.response ?? response,
       json: responseData,

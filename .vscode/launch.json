@@ -13,7 +13,7 @@
         "cucumber-js",
         "tests/features/**/*.feature", // Path to your feature files
         "--tags",
-        "@FILE_TEST", // tags
+        "@MOCK_PLAYWRIGHT", // tags
         "--require-module",
         "ts-node/register", // Enables TS in runtime
         "--require",
